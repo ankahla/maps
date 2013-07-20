@@ -1,0 +1,129 @@
+<html>
+<head>
+<script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
+<script type="text/javascript" src="http://google-maps-utility-library-v3.googlecode.com/svn/trunk/markerclusterer/src/markerclusterer.js"></script>
+<script type="text/javascript" src="http://code.jquery.com/jquery-1.9.1.js"></script>
+
+
+<script type="text/javascript"> 
+//<![CDATA[
+      var gmarkers = []; 
+      var map = null;
+	  var infowindow= null;
+      var markerclusterer = null;
+	  var data=[];
+	  var geocoder = null;
+	  
+
+function createMarker(latlng, name, html) {
+    var contentString = html;
+    var marker = new google.maps.Marker({
+        position: latlng,
+        map: map,
+        zIndex: Math.round(latlng.lat()*-100000)<<5
+        });
+
+    google.maps.event.addListener(marker, 'click', function() {
+        infowindow.setContent(contentString); 
+        infowindow.open(map,marker);
+        });
+return marker;
+}
+ 
+function initialize() {
+ infowindow=new google.maps.InfoWindow({size: new google.maps.Size(150,50)});
+ geocoder = new google.maps.Geocoder();
+      // Read the data from example.xml
+      jQuery.ajax({
+	  url:"markers.xml", 
+	  dataType: "xml",
+	  success:function(xml) {
+	  jQuery(xml).find('marker').each(function(){
+	  var node=jQuery(this);
+	  var m=new Object();
+	   m.lat = parseFloat(node.attr("lat"));
+       m.lng = parseFloat(node.attr("lng"));
+       m.point = new google.maps.LatLng(m.lat,m.lng);
+       m.id = node.attr("id");
+       m.country = node.attr("country");
+       m.html="<b>"+m.country+"</b><br>"+m.id;
+	data.push(m);
+	  });
+	  drawMap('#map_canvas','#side_bar');
+	   
+        }
+        
+      });
+	  
+    }
+ 
+ 
+function drawMap(map_selector,sidebar_selector,options)
+{
+var sidebarContainer=jQuery(sidebar_selector);
+var map_container=jQuery(map_selector);
+var MapOptions = {
+    zoom:3,
+    center: new google.maps.LatLng(43.907787,-79.359741),
+    mapTypeControl: true,
+    mapTypeControlOptions: {style: google.maps.MapTypeControlStyle.DROPDOWN_MENU},
+    navigationControl: true,
+    mapTypeId: google.maps.MapTypeId.ROADMAP
+  }
+
+MapOptions=jQuery.extend(options,MapOptions );
+
+map = new google.maps.Map(map_container[0],MapOptions);
+
+google.maps.event.addListener(map, 'click', function() {infowindow.close();});
+
+if (markerclusterer) {markerclusterer.clearMarkers();}
+sidebarContainer.html('');
+gmarkers=[];
+//custom copyright
+var copyrightNode=jQuery('<div>kahla.anouar@yahoo.fr</div>');
+map.controls[google.maps.ControlPosition.BOTTOM_RIGHT].push(copyrightNode[0]);
+search("Ile de france");
+jQuery(data).each(function(){
+ // create the marker
+var marker = createMarker(this.point,this.country+" "+this.id,this.html);
+gmarkers.push(marker);
+var link=jQuery('<a href="#">' + this.country+" "+this.id + '<\/a><br>').click(function(){google.maps.event.trigger(marker, "click");return false;});
+sidebarContainer.append(link);
+});
+var mcOptions = {gridSize: 50, maxZoom: 15};
+markerclusterer = new MarkerClusterer(map, gmarkers,mcOptions);
+}
+function search(address)
+{
+geocoder.geocode( { 'address': address,'country':'fr' }, function (point, status) {
+if (status == google.maps.GeocoderStatus.OK) {
+map.setCenter( point[0].geometry.location );
+map.setZoom( 4 );
+}});
+}
+jQuery(document).ready(function(){
+initialize();
+
+});
+//]]>
+
+</script>
+<style>
+#side_bar
+{
+height:500px;
+overflow:auto;
+}
+</style>
+</head>
+<body>
+<table><tr><td>
+<div style="height:500px;width:600px" id="map_canvas"></div>
+</td><td>
+<div id="side_bar"></div>
+</td></tr></table>
+<input id="map_address" type="text" value="" />
+<input type="submit" value="Recherche" onclick="search(jQuery('#map_address').val())" />
+</body>
+</html>
